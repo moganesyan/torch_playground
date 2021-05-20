@@ -28,6 +28,15 @@ class CNN(nn.Module):
         x = self.fc1(x)
         return x
 
+def save_checkpoint(state, filename = 'my_checkpoint.pth'):
+    print('Saving checkpoint')
+    torch.save(state, filename)
+
+def load_checkpoint(checkpoint):
+    print('Loading checkpoint')
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+
 # training parameters
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 in_channels = 1
@@ -35,6 +44,7 @@ num_classes = 10
 learning_rate = 0.001
 batch_size = 64
 num_epochs = 5
+load_model = False
 
 # Initialize datasets and model
 train_dataset = datasets.MNIST(root = 'dataset/', train = True, transform = transforms.ToTensor(), download = True)
@@ -48,14 +58,23 @@ model = CNN(in_channels = in_channels, num_classes = num_classes).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr = learning_rate)
 
+if load_model:
+    load_checkpoint(torch.load("my_checkpoint.pth"))
 # Training loop
 for epoch in range(num_epochs):
+    losses = []
+
+    if epoch % 3 == 0:
+        checkpoint = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict()}
+        save_checkpoint(checkpoint)
+
     for batch_idx, (data, targets) in enumerate(train_loader):
         data = data.to(device = device)
         targets = targets.to(device = device)
 
         scores = model(data)
         loss = criterion(scores, targets)
+        losses.append(loss.item())
 
         # reset gradients for each batch before stepping back
         optimizer.zero_grad()
